@@ -1,0 +1,94 @@
+mapio package
+=============
+
+Submodules
+----------
+
+mapio.cloud module
+------------------
+
+.. automodule:: mapio.cloud
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.dataset module
+--------------------
+
+.. automodule:: mapio.dataset
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.gdal module
+-----------------
+
+.. automodule:: mapio.gdal
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.gmt module
+----------------
+
+.. automodule:: mapio.gmt
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.grid2d module
+-------------------
+
+.. automodule:: mapio.grid2d
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.gridbase module
+---------------------
+
+.. automodule:: mapio.gridbase
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.multihaz module
+---------------------
+
+.. automodule:: mapio.multihaz
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.multiple module
+---------------------
+
+.. automodule:: mapio.multiple
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.shake module
+------------------
+
+.. automodule:: mapio.shake
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+mapio.testgmt module
+--------------------
+
+.. automodule:: mapio.testgmt
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: mapio
+    :members:
+    :undoc-members:
+    :show-inheritance:

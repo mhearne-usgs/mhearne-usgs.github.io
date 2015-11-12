@@ -1,0 +1,669 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>mapio.shake &mdash; MapIO  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="MapIO  documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO  documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for mapio.shake</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+
+<span class="c">#stdlib imports</span>
+<span class="kn">from</span> <span class="nn">xml.dom</span> <span class="kn">import</span> <span class="n">minidom</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">StringIO</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+
+<span class="c">#third party</span>
+<span class="kn">from</span> <span class="nn">gridbase</span> <span class="kn">import</span> <span class="n">Grid</span>
+<span class="kn">from</span> <span class="nn">multiple</span> <span class="kn">import</span> <span class="n">MultiGrid</span>
+<span class="kn">from</span> <span class="nn">dataset</span> <span class="kn">import</span> <span class="n">DataSetException</span>
+<span class="kn">from</span> <span class="nn">grid2d</span> <span class="kn">import</span> <span class="n">Grid2D</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="n">GRIDKEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;event_id&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+            <span class="s">&#39;shakemap_id&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+            <span class="s">&#39;shakemap_version&#39;</span><span class="p">:</span><span class="s">&#39;int&#39;</span><span class="p">,</span>
+            <span class="s">&#39;code_version&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+            <span class="s">&#39;process_timestamp&#39;</span><span class="p">:</span><span class="s">&#39;datetime&#39;</span><span class="p">,</span>
+            <span class="s">&#39;shakemap_originator&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+            <span class="s">&#39;map_status&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+            <span class="s">&#39;shakemap_event_type&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">}</span>
+
+<span class="n">EVENTKEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;event_id&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+             <span class="s">&#39;magnitude&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+             <span class="s">&#39;depth&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+             <span class="s">&#39;lat&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+             <span class="s">&#39;lon&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+             <span class="s">&#39;event_timestamp&#39;</span><span class="p">:</span><span class="s">&#39;datetime&#39;</span><span class="p">,</span>
+             <span class="s">&#39;event_network&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">,</span>
+             <span class="s">&#39;event_description&#39;</span><span class="p">:</span><span class="s">&#39;string&#39;</span><span class="p">}</span>
+
+<span class="n">SPECKEYS</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;lon_min&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+            <span class="s">&#39;lon_max&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+            <span class="s">&#39;lat_min&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+            <span class="s">&#39;lat_max&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+            <span class="s">&#39;nominal_lon_spacing&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+            <span class="s">&#39;nominal_lat_spacing&#39;</span><span class="p">:</span><span class="s">&#39;float&#39;</span><span class="p">,</span>
+            <span class="s">&#39;nlon&#39;</span><span class="p">:</span><span class="s">&#39;int&#39;</span><span class="p">,</span>
+            <span class="s">&#39;nlat&#39;</span><span class="p">:</span><span class="s">&#39;int&#39;</span><span class="p">}</span>
+
+<span class="n">FIELDKEYS</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;pga&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;pctg&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;pgv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;cms&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;mmi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;intensity&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;psa03&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;pctg&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;psa10&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;pctg&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;psa30&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;pctg&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;stdpga&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;ln(pctg)&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;urat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+<span class="n">FIELDKEYS</span><span class="p">[</span><span class="s">&#39;svel&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;ms&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.2f</span><span class="s">&#39;</span><span class="p">)</span>
+          
+
+<span class="n">TIMEFMT</span> <span class="o">=</span> <span class="s">&#39;%Y-%m-</span><span class="si">%d</span><span class="s">T%H:%M:%S&#39;</span>
+
+<span class="k">def</span> <span class="nf">_readElement</span><span class="p">(</span><span class="n">element</span><span class="p">,</span><span class="n">keys</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convenience function for reading all attributes of a ShakeMap gridfile element, doing data conversion.</span>
+<span class="sd">    :param element:</span>
+<span class="sd">      XML DOM element with attributes</span>
+<span class="sd">    :param keys:</span>
+<span class="sd">      Dictionary of keys for different elements with types.</span>
+<span class="sd">    :returns:</span>
+<span class="sd">      Dictionary of named attributes with values from DOM element, converted to int, float or datetime where needed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">eldict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">dtype</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;datetime&#39;</span><span class="p">:</span>
+            <span class="n">eldict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="n">key</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">19</span><span class="p">],</span><span class="n">TIMEFMT</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;int&#39;</span><span class="p">:</span>
+            <span class="n">eldict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;float&#39;</span><span class="p">:</span>
+            <span class="n">eldict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">eldict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">eldict</span>
+
+<span class="k">def</span> <span class="nf">_getXMLText</span><span class="p">(</span><span class="n">fileobj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convenience function for reading the XML header data in a ShakeMap grid file.</span>
+<span class="sd">    :param fileobj:</span>
+<span class="sd">      File-like object representing an open ShakeMap grid file.</span>
+<span class="sd">    :returns:</span>
+<span class="sd">      All XML header text.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tline</span> <span class="o">=</span> <span class="n">fileobj</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span> 
+    <span class="n">datamatch</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;grid_data&#39;</span><span class="p">)</span>
+    <span class="n">xmltext</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="n">tlineold</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">datamatch</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">tline</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tline</span> <span class="o">!=</span> <span class="n">tlineold</span><span class="p">:</span>
+        <span class="n">tlineold</span> <span class="o">=</span> <span class="n">tline</span>
+        <span class="n">xmltext</span> <span class="o">=</span> <span class="n">xmltext</span><span class="o">+</span><span class="n">tline</span>
+        <span class="n">tline</span> <span class="o">=</span> <span class="n">fileobj</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>    
+
+    <span class="n">xmltext</span> <span class="o">=</span> <span class="n">xmltext</span><span class="o">+</span><span class="s">&#39;&lt;/shakemap_grid&gt;&#39;</span>
+    <span class="k">return</span> <span class="n">xmltext</span>
+
+<span class="k">def</span> <span class="nf">_getHeaderData</span><span class="p">(</span><span class="n">fileobj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return all relevant header data from ShakeMap grid.xml file.</span>
+<span class="sd">    :param fileobj:</span>
+<span class="sd">      File-like object representing an open ShakeMap grid file.</span>
+<span class="sd">    :returns:</span>
+<span class="sd">      Tuple of dictionaries:</span>
+<span class="sd">        - Dictionary representing the grid element in the ShakeMap header.</span>
+<span class="sd">        - Dictionary representing the event element in the ShakeMap header.</span>
+<span class="sd">        - Dictionary representing the grid_specification element in the ShakeMap header.</span>
+<span class="sd">        - Dictionary representing the list of grid_field elements in the ShakeMap header.</span>
+<span class="sd">        - Dictionary representing the list of event_specific_uncertainty elements in the ShakeMap header.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">xmltext</span> <span class="o">=</span> <span class="n">_getXMLText</span><span class="p">(</span><span class="n">fileobj</span><span class="p">)</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">minidom</span><span class="o">.</span><span class="n">parseString</span><span class="p">(</span><span class="n">xmltext</span><span class="p">)</span>
+    <span class="n">griddict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">gridel</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">getElementsByTagName</span><span class="p">(</span><span class="s">&#39;shakemap_grid&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">griddict</span> <span class="o">=</span> <span class="n">_readElement</span><span class="p">(</span><span class="n">gridel</span><span class="p">,</span><span class="n">GRIDKEYS</span><span class="p">)</span>
+    <span class="n">eventel</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">getElementsByTagName</span><span class="p">(</span><span class="s">&#39;event&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">eventdict</span> <span class="o">=</span> <span class="n">_readElement</span><span class="p">(</span><span class="n">eventel</span><span class="p">,</span><span class="n">EVENTKEYS</span><span class="p">)</span>
+    <span class="n">specel</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">getElementsByTagName</span><span class="p">(</span><span class="s">&#39;grid_specification&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">specdict</span> <span class="o">=</span> <span class="n">_readElement</span><span class="p">(</span><span class="n">specel</span><span class="p">,</span><span class="n">SPECKEYS</span><span class="p">)</span>
+    <span class="n">field_elements</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">getElementsByTagName</span><span class="p">(</span><span class="s">&#39;grid_field&#39;</span><span class="p">)</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">fieldel</span> <span class="ow">in</span> <span class="n">field_elements</span><span class="p">:</span>
+        <span class="n">att</span> <span class="o">=</span> <span class="n">fieldel</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">att</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;lon&#39;</span><span class="p">,</span><span class="s">&#39;lat&#39;</span><span class="p">]:</span>
+            <span class="k">continue</span>
+        <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">att</span><span class="p">)</span>
+
+    <span class="n">uncertainties</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">unc_elements</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">getElementsByTagName</span><span class="p">(</span><span class="s">&#39;event_specific_uncertainty&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">uncel</span> <span class="ow">in</span> <span class="n">unc_elements</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">uncel</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">uncel</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="s">&#39;value&#39;</span><span class="p">))</span>
+        <span class="n">numsta</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">uncel</span><span class="o">.</span><span class="n">getAttribute</span><span class="p">(</span><span class="s">&#39;numsta&#39;</span><span class="p">))</span>
+        <span class="n">uncertainties</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="n">numsta</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">griddict</span><span class="p">,</span><span class="n">eventdict</span><span class="p">,</span><span class="n">specdict</span><span class="p">,</span><span class="n">fields</span><span class="p">,</span><span class="n">uncertainties</span><span class="p">)</span>
+
+<div class="viewcode-block" id="readShakeFile"><a class="viewcode-back" href="../../mapio.html#mapio.shake.readShakeFile">[docs]</a><span class="k">def</span> <span class="nf">readShakeFile</span><span class="p">(</span><span class="n">fileobj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reads in the data and metadata for a ShakeMap object (can be passed to ShakeGrid constructor).</span>
+<span class="sd">    :param fileobj:</span>
+<span class="sd">      File-like object representing an open ShakeMap grid file.</span>
+<span class="sd">    :returns:</span>
+<span class="sd">      Tuple containing:</span>
+<span class="sd">        - Ordered Dictionary with the data layers in ShakeMap (MMI, PGA, PGV, etc.)</span>
+<span class="sd">        - Geo dictionary describing the spatial extent and resolution of all the layers.</span>
+<span class="sd">        - Dictionary representing the event element in the ShakeMap header.</span>
+<span class="sd">        - Dictionary representing the grid element in the ShakeMap header.</span>
+<span class="sd">        - Dictionary representing the list of event_specific_uncertainty elements in the ShakeMap header.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">griddict</span><span class="p">,</span><span class="n">eventdict</span><span class="p">,</span><span class="n">specdict</span><span class="p">,</span><span class="n">fields</span><span class="p">,</span><span class="n">uncertainties</span> <span class="o">=</span> <span class="n">_getHeaderData</span><span class="p">(</span><span class="n">fileobj</span><span class="p">)</span>
+    <span class="n">ncols</span> <span class="o">=</span> <span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nlon&#39;</span><span class="p">]</span>
+    <span class="n">nrows</span> <span class="o">=</span> <span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nlat&#39;</span><span class="p">]</span>
+    <span class="n">layers</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="c">#use the numpy loadtxt function to read in the actual data</span>
+    <span class="c">#we&#39;re cheating by telling numpy.loadtxt that the last two lines of the XML file are comments</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">fileobj</span><span class="p">,</span><span class="n">comments</span><span class="o">=</span><span class="s">&#39;&lt;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">&#39;float32&#39;</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="mi">2</span><span class="p">:]</span> <span class="c">#throw away lat/lon columns</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)):</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="n">fields</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">layers</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">nrows</span><span class="p">,</span><span class="n">ncols</span><span class="p">)</span>
+
+    <span class="c">#create the geodict from the grid_spec element</span>
+    <span class="n">geodict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lon_min&#39;</span><span class="p">],</span>
+               <span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lon_max&#39;</span><span class="p">],</span>
+               <span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lat_min&#39;</span><span class="p">],</span>
+               <span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lat_max&#39;</span><span class="p">],</span>
+               <span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nominal_lon_spacing&#39;</span><span class="p">],</span>
+               <span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nominal_lat_spacing&#39;</span><span class="p">],</span>
+               <span class="s">&#39;nrows&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nlat&#39;</span><span class="p">],</span>
+               <span class="s">&#39;ncols&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nlon&#39;</span><span class="p">]}</span>
+    
+    <span class="k">return</span> <span class="p">(</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventdict</span><span class="p">,</span><span class="n">griddict</span><span class="p">,</span><span class="n">uncertainties</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ShakeGrid"><a class="viewcode-back" href="../../mapio.html#mapio.shake.ShakeGrid">[docs]</a><span class="k">class</span> <span class="nc">ShakeGrid</span><span class="p">(</span><span class="n">MultiGrid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class that implements a MultiGrid object around ShakeMap grid.xml data sets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventDict</span><span class="p">,</span><span class="n">shakeDict</span><span class="p">,</span><span class="n">uncertaintyDict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Construct a ShakeGrid object.</span>
+<span class="sd">        :param layers:</span>
+<span class="sd">           OrderedDict containing ShakeMap data layers (keys are &#39;pga&#39;, etc., values are 2D arrays of data).</span>
+<span class="sd">        :param geodict:</span>
+<span class="sd">           Dictionary specifying the spatial extent,resolution and shape of the data.</span>
+<span class="sd">        :param eventDict:</span>
+<span class="sd">          Dictionary with elements:</span>
+<span class="sd">            - event_id String of event ID (i.e., &#39;us2015abcd&#39;)</span>
+<span class="sd">            - magnitude Float event magnitude</span>
+<span class="sd">            - depth Float event depth</span>
+<span class="sd">            - lat Float event latitude</span>
+<span class="sd">            - lon Float event longitude</span>
+<span class="sd">            - event_timestamp Datetime object representing event origin time.</span>
+<span class="sd">            - event_network Event originating network (i.e., &#39;us&#39;)</span>
+<span class="sd">        :param shakeDict:</span>
+<span class="sd">          Dictionary with elements:</span>
+<span class="sd">            - event_id String of event ID (i.e., &#39;us2015abcd&#39;)</span>
+<span class="sd">            - shakemap_id String of ShakeMap ID (not necessarily the same as the event ID)</span>
+<span class="sd">            - shakemap_version Integer ShakeMap version number (i.e., 1)</span>
+<span class="sd">            - code_version String version of ShakeMap code that created this file (i.e.,&#39;4.0&#39;)</span>
+<span class="sd">            - process_timestamp Datetime of when ShakeMap data was created.</span>
+<span class="sd">            - shakemap_originator String representing network that created the ShakeMap</span>
+<span class="sd">            - map_status String, one of RELEASED, ??</span>
+<span class="sd">            - shakemap_event_type String, one of [&#39;ACTUAL&#39;,&#39;SCENARIO&#39;]</span>
+<span class="sd">        :param uncertaintyDict:</span>
+<span class="sd">          Dictionary with elements that have keys matching the layers keys, and values that are</span>
+<span class="sd">           a tuple of that layer&#39;s uncertainty (float) and the number of stations used to determine that uncertainty (int).</span>
+<span class="sd">        :returns:</span>
+<span class="sd">           A ShakeGrid object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span> <span class="o">=</span> <span class="n">geodict</span>
+        <span class="k">for</span> <span class="n">layerkey</span><span class="p">,</span><span class="n">layerdata</span> <span class="ow">in</span> <span class="n">layers</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">layerkey</span><span class="p">]</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">layerdata</span><span class="p">,</span><span class="n">geodict</span><span class="o">=</span><span class="n">geodict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setEventDict</span><span class="p">(</span><span class="n">eventDict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setShakeDict</span><span class="p">(</span><span class="n">shakeDict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setUncertaintyDict</span><span class="p">(</span><span class="n">uncertaintyDict</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ShakeGrid.getFileGeoDict"><a class="viewcode-back" href="../../mapio.html#mapio.shake.ShakeGrid.getFileGeoDict">[docs]</a>    <span class="k">def</span> <span class="nf">getFileGeoDict</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">shakefilename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the spatial extent, resolution, and shape of grids inside ShakeMap grid file.</span>
+<span class="sd">        :param filename:</span>
+<span class="sd">           File name of ShakeMap grid file.</span>
+<span class="sd">        :returns:</span>
+<span class="sd">          GeoDict specifying spatial extent, resolution, and shape of grids inside ShakeMap grid file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">isFileObj</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">shakefilename</span><span class="p">,</span><span class="s">&#39;read&#39;</span><span class="p">):</span>
+            <span class="n">shakefile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shakefilename</span><span class="p">,</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">isFileObj</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="n">shakefile</span> <span class="o">=</span> <span class="n">shakefilename</span>
+        <span class="n">griddict</span><span class="p">,</span><span class="n">eventdict</span><span class="p">,</span><span class="n">specdict</span><span class="p">,</span><span class="n">fields</span><span class="p">,</span><span class="n">uncertainties</span> <span class="o">=</span> <span class="n">_getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">isFileObj</span><span class="p">:</span>
+            <span class="n">shakefile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">geodict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lon_min&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lon_max&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lat_min&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;lat_max&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nominal_lon_spacing&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nominal_lat_spacing&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;nrows&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nlat&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;ncols&#39;</span><span class="p">:</span><span class="n">specdict</span><span class="p">[</span><span class="s">&#39;nlon&#39;</span><span class="p">]}</span>
+        <span class="k">return</span> <span class="n">geodict</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ShakeGrid.load"><a class="viewcode-back" href="../../mapio.html#mapio.shake.ShakeGrid.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">shakefilename</span><span class="p">,</span><span class="n">samplegeodict</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="s">&#39;linear&#39;</span><span class="p">,</span><span class="n">doPadding</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a ShakeGrid object from a ShakeMap grid.xml file.</span>
+<span class="sd">        :param shakefilename:</span>
+<span class="sd">          File name or File-like object of ShakeMap grid.xml file.</span>
+<span class="sd">        :param samplegeodict:</span>
+<span class="sd">          GeoDict used to specify subset bounds and resolution (if resample is selected)</span>
+<span class="sd">        :param resample:</span>
+<span class="sd">          Boolean used to indicate whether grid should be resampled from the file based on samplegeodict.</span>
+<span class="sd">        :param method:</span>
+<span class="sd">          If resample=True, resampling method to use (&#39;nearest&#39;,&#39;linear&#39;,&#39;cubic&#39;,&#39;quintic&#39;)</span>
+<span class="sd">        :param doPadding:</span>
+<span class="sd">          Boolean used to indicate whether, if samplegeodict is outside bounds of grid, to pad values around the edges.</span>
+<span class="sd">        :param padValue:</span>
+<span class="sd">          Value to fill in around the edges if doPadding=True.</span>
+<span class="sd">        :returns:</span>
+<span class="sd">          ShakeGrid object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c">#geodict can have xdim/ydim OR ncols/nrows.  If given both, xdim/ydim will be used to re-calculate nrows/ncols</span>
+        <span class="n">isFileObj</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">shakefilename</span><span class="p">,</span><span class="s">&#39;read&#39;</span><span class="p">):</span>
+            <span class="n">shakefile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shakefilename</span><span class="p">,</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">isFileObj</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="n">shakefile</span> <span class="o">=</span> <span class="n">shakefilename</span>
+
+        <span class="k">if</span> <span class="n">samplegeodict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c">#fill in nrows/ncols or xdim/ydim, whichever is not specified.  xdim/ydim dictate if both pairs are specified.</span>
+            <span class="n">samplegeodict</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">fillGeoDict</span><span class="p">(</span><span class="n">samplegeodict</span><span class="p">)</span>
+
+        <span class="c">#read the file using the available function</span>
+        <span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventDict</span><span class="p">,</span><span class="n">shakeDict</span><span class="p">,</span><span class="n">uncertaintyDict</span> <span class="o">=</span> <span class="n">readShakeFile</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isFileObj</span><span class="p">:</span>
+            <span class="n">shakefile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">samplegeodict</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">pass</span> <span class="c">#everything we need has already been retrieved</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">samplegeodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">],</span><span class="n">samplegeodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">],</span><span class="n">samplegeodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">],</span><span class="n">samplegeodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">])</span>
+            <span class="n">isOutside</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="n">xmin</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">]</span>
+            <span class="n">xmax</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">]</span>
+            <span class="n">ymin</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">]</span>
+            <span class="n">ymax</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xmin</span> <span class="ow">or</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">xmax</span> <span class="ow">or</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">ymin</span> <span class="ow">or</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">ymax</span><span class="p">:</span>
+                <span class="n">isOutside</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">if</span> <span class="n">isOutside</span> <span class="ow">and</span> <span class="n">resample</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">doPadding</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;Cannot resample data given input bounds, unless doPadding is set to True.&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">doPadding</span><span class="p">:</span>
+                <span class="n">leftpad</span><span class="p">,</span><span class="n">rightpad</span><span class="p">,</span><span class="n">bottompad</span><span class="p">,</span><span class="n">toppad</span><span class="p">,</span><span class="n">geodict</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">MultiGrid</span><span class="p">,</span><span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">_getPadding</span><span class="p">(</span><span class="n">geodict</span><span class="p">,</span><span class="n">bounds</span><span class="p">,</span><span class="n">padValue</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">layername</span><span class="p">,</span><span class="n">layerdata</span> <span class="ow">in</span> <span class="n">layers</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                    <span class="c">#pad left side</span>
+                    <span class="n">layerdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">leftpad</span><span class="p">,</span><span class="n">layerdata</span><span class="p">))</span>
+                    <span class="c">#pad right side</span>
+                    <span class="n">layerdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">layerdata</span><span class="p">,</span><span class="n">rightpad</span><span class="p">))</span>
+                    <span class="c">#pad bottom</span>
+                    <span class="n">layerdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">layerdata</span><span class="p">,</span><span class="n">bottompad</span><span class="p">))</span>
+                    <span class="c">#pad top</span>
+                    <span class="n">layerdata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">toppad</span><span class="p">,</span><span class="n">layerdata</span><span class="p">))</span>
+                    <span class="n">grid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">layerdata</span><span class="p">,</span><span class="n">geodict</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">resample</span><span class="p">:</span> <span class="c">#should I just do an interpolateToGrid() here?</span>
+                        <span class="n">grid</span><span class="o">.</span><span class="n">trim</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="n">resample</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+                    <span class="n">layers</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+                <span class="n">geodict</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">layername</span><span class="p">,</span><span class="n">layerdata</span> <span class="ow">in</span> <span class="n">layers</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                    <span class="n">grid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">layerdata</span><span class="p">,</span><span class="n">geodict</span><span class="p">)</span>
+                    <span class="n">grid</span><span class="o">.</span><span class="n">trim</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="n">resample</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+                    <span class="n">layers</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+                <span class="n">geodict</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            
+        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventDict</span><span class="p">,</span><span class="n">shakeDict</span><span class="p">,</span><span class="n">uncertaintyDict</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="ShakeGrid.save"><a class="viewcode-back" href="../../mapio.html#mapio.shake.ShakeGrid.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">filename</span><span class="p">,</span><span class="n">version</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Save a ShakeGrid object to the grid.xml format.</span>
+<span class="sd">        :param filename:</span>
+<span class="sd">          File name or file-like object.</span>
+<span class="sd">        :param version:</span>
+<span class="sd">          Integer Shakemap version number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">isFile</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s">&#39;read&#39;</span><span class="p">):</span>
+            <span class="n">isFile</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s">&#39;wt&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">filename</span>    
+        <span class="n">SCHEMA1</span> <span class="o">=</span> <span class="s">&#39;http://www.w3.org/2001/XMLSchema-instance&#39;</span>
+        <span class="n">SCHEMA2</span> <span class="o">=</span> <span class="s">&#39;http://earthquake.usgs.gov/eqcenter/shakemap&#39;</span>
+        <span class="n">SCHEMA3</span> <span class="o">=</span> <span class="s">&#39;http://earthquake.usgs.gov http://earthquake.usgs.gov/eqcenter/shakemap/xml/schemas/shakemap.xsd&#39;</span>
+
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&lt;?xml version=&quot;1.0&quot; encoding=&quot;US-ASCII&quot; standalone=&quot;yes&quot;?&gt;&#39;</span><span class="p">)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s">&#39;&lt;shakemap_grid xmlns:xsi=&quot;</span><span class="si">%s</span><span class="s">&quot; xmlns=&quot;</span><span class="si">%s</span><span class="s">&quot; xsi:schemaLocation=&quot;</span><span class="si">%s</span><span class="s">&quot; event_id=&quot;</span><span class="si">%s</span><span class="s">&quot; shakemap_id=&quot;</span><span class="si">%s</span><span class="s">&quot; shakemap_version=&quot;</span><span class="si">%i</span><span class="s">&quot; code_version=&quot;</span><span class="si">%s</span><span class="s">&quot; process_timestamp=&quot;</span><span class="si">%s</span><span class="s">&quot; shakemap_originator=&quot;</span><span class="si">%s</span><span class="s">&quot; map_status=&quot;</span><span class="si">%s</span><span class="s">&quot; shakemap_event_type=&quot;</span><span class="si">%s</span><span class="s">&quot;&gt;</span><span class="se">\n</span><span class="s">&#39;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="p">(</span><span class="n">SCHEMA1</span><span class="p">,</span><span class="n">SCHEMA2</span><span class="p">,</span><span class="n">SCHEMA3</span><span class="p">,</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;event_id&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;shakemap_id&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;shakemap_version&#39;</span><span class="p">],</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;code_version&#39;</span><span class="p">],</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">TIMEFMT</span><span class="p">),</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;shakemap_originator&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;map_status&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span><span class="p">[</span><span class="s">&#39;shakemap_event_type&#39;</span><span class="p">])</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">%</span> <span class="n">tpl</span><span class="p">)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s">&#39;&lt;event event_id=&quot;</span><span class="si">%s</span><span class="s">&quot; magnitude=&quot;</span><span class="si">%.1f</span><span class="s">&quot; depth=&quot;</span><span class="si">%.1f</span><span class="s">&quot; lat=&quot;</span><span class="si">%.4f</span><span class="s">&quot; lon=&quot;</span><span class="si">%.4f</span><span class="s">&quot; event_timestamp=&quot;</span><span class="si">%s</span><span class="s">&quot; event_network=&quot;</span><span class="si">%s</span><span class="s">&quot; event_description=&quot;</span><span class="si">%s</span><span class="s">&quot;/&gt;</span><span class="se">\n</span><span class="s">&#39;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;event_id&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;magnitude&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;depth&#39;</span><span class="p">],</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;lat&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;lon&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;event_timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">TIMEFMT</span><span class="p">),</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;event_network&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span><span class="p">[</span><span class="s">&#39;event_description&#39;</span><span class="p">])</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">%</span> <span class="n">tpl</span><span class="p">)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s">&#39;&lt;grid_specification lon_min=&quot;</span><span class="si">%.4f</span><span class="s">&quot; lat_min=&quot;</span><span class="si">%.4f</span><span class="s">&quot; lon_max=&quot;</span><span class="si">%.4f</span><span class="s">&quot; lat_max=&quot;</span><span class="si">%.4f</span><span class="s">&quot; nominal_lon_spacing=&quot;</span><span class="si">%.4f</span><span class="s">&quot; nominal_lat_spacing=&quot;</span><span class="si">%.4f</span><span class="s">&quot; nlon=&quot;</span><span class="si">%i</span><span class="s">&quot; nlat=&quot;</span><span class="si">%i</span><span class="s">&quot;/&gt;&#39;</span>
+        <span class="n">tpl</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">],</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;xdim&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;ydim&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;ncols&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;nrows&#39;</span><span class="p">])</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">%</span> <span class="n">tpl</span><span class="p">)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s">&#39;&lt;event_specific_uncertainty name=&quot;</span><span class="si">%s</span><span class="s">&quot; value=&quot;</span><span class="si">%.4f</span><span class="s">&quot; numsta=&quot;</span><span class="si">%i</span><span class="s">&quot; /&gt;</span><span class="se">\n</span><span class="s">&#39;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">unctuple</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uncertaintyDict</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">value</span><span class="p">,</span><span class="n">numsta</span> <span class="o">=</span> <span class="n">unctuple</span>
+            <span class="n">tpl</span> <span class="o">=</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">value</span><span class="p">,</span><span class="n">numsta</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">%</span> <span class="n">tpl</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&lt;grid_field index=&quot;1&quot; name=&quot;LON&quot; units=&quot;dd&quot; /&gt;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&lt;grid_field index=&quot;2&quot; name=&quot;LAT&quot; units=&quot;dd&quot; /&gt;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s">&#39;&lt;grid_field index=&quot;</span><span class="si">%i</span><span class="s">&quot; name=&quot;</span><span class="si">%s</span><span class="s">&quot; units=&quot;</span><span class="si">%s</span><span class="s">&quot; /&gt;</span><span class="se">\n</span><span class="s">&#39;</span>
+        <span class="n">data_formats</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;</span><span class="si">%.4f</span><span class="s">&#39;</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%.4f</span><span class="s">&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">tpl</span> <span class="o">=</span> <span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="n">field</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span><span class="n">FIELDKEYS</span><span class="p">[</span><span class="n">field</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">data_formats</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FIELDKEYS</span><span class="p">[</span><span class="n">field</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">%</span> <span class="n">tpl</span><span class="p">)</span>
+            <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&lt;grid_data&gt;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="n">lat</span><span class="p">,</span><span class="n">lon</span> <span class="o">=</span> <span class="n">Grid</span><span class="p">()</span><span class="o">.</span><span class="n">getLatLonMesh</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">)</span>
+        <span class="n">nfields</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;nrows&#39;</span><span class="p">]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span><span class="p">[</span><span class="s">&#39;ncols&#39;</span><span class="p">],</span><span class="n">nfields</span><span class="p">))</span>
+        <span class="n">data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">lat</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">lon</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">fidx</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="k">for</span> <span class="n">grid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">data</span><span class="p">[:,</span><span class="n">fidx</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">fidx</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">f</span><span class="p">,</span><span class="n">data</span><span class="p">,</span><span class="n">delimiter</span><span class="o">=</span><span class="s">&#39; &#39;</span><span class="p">,</span><span class="n">fmt</span><span class="o">=</span><span class="n">data_formats</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;&lt;/grid_data&gt;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">isFile</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+    <span class="k">def</span> <span class="nf">_checkType</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">dtype</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Internal method used to validate the types of the input dictionaries used in constructor.</span>
+<span class="sd">        :param key:</span>
+<span class="sd">          String key value</span>
+<span class="sd">        :param dtype:</span>
+<span class="sd">          Expected data type of key.</span>
+<span class="sd">        :returns:</span>
+<span class="sd">          True if key matches expected dtype, False if not.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;string&#39;</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="nb">unicode</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;int&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;float&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="nb">float</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;datetime&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">datetime</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    
+    <span class="k">def</span> <span class="nf">_setEventDict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">eventdict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the event dictionary, validating all values in the dictionary.</span>
+<span class="sd">        :param eventdict:</span>
+<span class="sd">          Event dictionary (see constructor).</span>
+<span class="sd">        :raises DataSetException:</span>
+<span class="sd">          When one of the values in the dictionary does not match its expected type.        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">dtype</span> <span class="ow">in</span> <span class="n">EVENTKEYS</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">eventdict</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;eventdict is missing key &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkType</span><span class="p">(</span><span class="n">eventdict</span><span class="p">[</span><span class="n">key</span><span class="p">],</span><span class="n">dtype</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;eventdict key value &quot;</span><span class="si">%s</span><span class="s">&quot; is the wrong datatype&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">eventdict</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eventDict</span> <span class="o">=</span> <span class="n">eventdict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_setShakeDict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">shakedict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the shake dictionary, validating all values in the dictionary.</span>
+<span class="sd">        :param shakedict:</span>
+<span class="sd">          Shake dictionary (see constructor).</span>
+<span class="sd">        :raises DataSetException:</span>
+<span class="sd">          When one of the values in the dictionary does not match its expected type.        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">dtype</span> <span class="ow">in</span> <span class="n">GRIDKEYS</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">shakedict</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;shakedict is missing key &quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkType</span><span class="p">(</span><span class="n">shakedict</span><span class="p">[</span><span class="n">key</span><span class="p">],</span><span class="n">dtype</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;shakedict key value &quot;</span><span class="si">%s</span><span class="s">&quot; is the wrong datatype&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">shakedict</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shakeDict</span> <span class="o">=</span> <span class="n">shakedict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_setUncertaintyDict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">uncertaintyDict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the uncertainty dictionary.</span>
+<span class="sd">        :param uncertaintyDict:</span>
+<span class="sd">          Uncertainty dictionary (see constructor).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_uncertaintyDict</span> <span class="o">=</span> <span class="n">uncertaintyDict</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        </div>
+<span class="k">def</span> <span class="nf">_trim_test</span><span class="p">(</span><span class="n">shakefile</span><span class="p">):</span>
+    <span class="n">geodict</span> <span class="o">=</span> <span class="n">getShakeDict</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+    <span class="c">#bring in the shakemap by a half dimension (quarter on each side)</span>
+    <span class="n">lonrange</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">]</span>
+    <span class="n">latrange</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">]</span>
+    <span class="n">newxmin</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">lonrange</span><span class="o">/</span><span class="mf">4.0</span>
+    <span class="n">newxmax</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">lonrange</span><span class="o">/</span><span class="mf">4.0</span>
+    <span class="n">newymin</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">latrange</span><span class="o">/</span><span class="mf">4.0</span>
+    <span class="n">newymax</span> <span class="o">=</span> <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">latrange</span><span class="o">/</span><span class="mf">4.0</span>
+    <span class="n">newbounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">newxmin</span><span class="p">,</span><span class="n">newxmax</span><span class="p">,</span><span class="n">newymin</span><span class="p">,</span><span class="n">newymax</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+    <span class="n">grid</span><span class="o">.</span><span class="n">trim</span><span class="p">(</span><span class="n">newbounds</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_read_test</span><span class="p">(</span><span class="n">xmlfile</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">shakegrid</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xmlfile</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span><span class="n">error</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;Failed to read grid.xml format file &quot;</span><span class="si">%s</span><span class="s">&quot;. Error &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">xmlfile</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">))</span>
+    
+<span class="k">def</span> <span class="nf">_save_test</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;Testing save/read functionality for shakemap grids...&#39;</span>
+        <span class="n">pga</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">pgv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">mmi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">18</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">geodict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">3.5</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">3.5</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;nrows&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="s">&#39;ncols&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">}</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;pga&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pga</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;pgv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pgv</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;mmi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mmi</span>
+        <span class="n">shakeDict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;event_id&#39;</span><span class="p">:</span><span class="s">&#39;usabcd1234&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;shakemap_id&#39;</span><span class="p">:</span><span class="s">&#39;usabcd1234&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;shakemap_version&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span>
+                     <span class="s">&#39;code_version&#39;</span><span class="p">:</span><span class="s">&#39;4.0&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;process_timestamp&#39;</span><span class="p">:</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">(),</span>
+                     <span class="s">&#39;shakemap_originator&#39;</span><span class="p">:</span><span class="s">&#39;us&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;map_status&#39;</span><span class="p">:</span><span class="s">&#39;RELEASED&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;shakemap_event_type&#39;</span><span class="p">:</span><span class="s">&#39;ACTUAL&#39;</span><span class="p">}</span>
+        <span class="n">eventDict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;event_id&#39;</span><span class="p">:</span><span class="s">&#39;usabcd1234&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;magnitude&#39;</span><span class="p">:</span><span class="mf">7.6</span><span class="p">,</span>
+                     <span class="s">&#39;depth&#39;</span><span class="p">:</span><span class="mf">1.4</span><span class="p">,</span>
+                     <span class="s">&#39;lat&#39;</span><span class="p">:</span><span class="mf">2.0</span><span class="p">,</span>
+                     <span class="s">&#39;lon&#39;</span><span class="p">:</span><span class="mf">2.0</span><span class="p">,</span>
+                     <span class="s">&#39;event_timestamp&#39;</span><span class="p">:</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">(),</span>
+                     <span class="s">&#39;event_network&#39;</span><span class="p">:</span><span class="s">&#39;us&#39;</span><span class="p">,</span>
+                     <span class="s">&#39;event_description&#39;</span><span class="p">:</span><span class="s">&#39;sample event&#39;</span><span class="p">}</span>
+        <span class="n">uncDict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;pga&#39;</span><span class="p">:(</span><span class="mf">0.0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+                   <span class="s">&#39;pgv&#39;</span><span class="p">:(</span><span class="mf">0.0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+                   <span class="s">&#39;mmi&#39;</span><span class="p">:(</span><span class="mf">0.0</span><span class="p">,</span><span class="mi">0</span><span class="p">)}</span>
+        <span class="n">shake</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventDict</span><span class="p">,</span><span class="n">shakeDict</span><span class="p">,</span><span class="n">uncDict</span><span class="p">)</span>
+        
+        <span class="k">print</span> <span class="s">&#39;Testing save/read functionality...&#39;</span>
+        <span class="n">shake</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">version</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">shake2</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;pga&#39;</span><span class="p">,</span><span class="s">&#39;pgv&#39;</span><span class="p">,</span><span class="s">&#39;mmi&#39;</span><span class="p">]:</span>
+            <span class="n">tdata</span> <span class="o">=</span> <span class="n">shake2</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_almost_equal</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">])</span>
+
+        <span class="k">print</span> <span class="s">&#39;Passed save/read functionality for shakemap grids.&#39;</span>
+
+        <span class="k">print</span> <span class="s">&#39;Testing loading with bounds (no resampling or padding)...&#39;</span>
+        <span class="n">sampledict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span>
+                      <span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">4.5</span><span class="p">,</span>
+                      <span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span>
+                      <span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">4.5</span><span class="p">,</span>
+                      <span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span>
+                      <span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">}</span>
+        <span class="n">shake3</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">samplegeodict</span><span class="o">=</span><span class="n">sampledict</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">doPadding</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">tdata</span> <span class="o">=</span> <span class="n">shake3</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s">&#39;pga&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_almost_equal</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span><span class="n">layers</span><span class="p">[</span><span class="s">&#39;pga&#39;</span><span class="p">])</span>
+
+        <span class="k">print</span> <span class="s">&#39;Passed loading with bounds (no resampling or padding)...&#39;</span>
+
+        <span class="k">print</span> <span class="s">&#39;Testing loading shakemap with padding, no resampling...&#39;</span>
+        <span class="n">newdict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">4.5</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">4.5</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">}</span>
+        <span class="n">shake4</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">samplegeodict</span><span class="o">=</span><span class="n">newdict</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">doPadding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">3.0</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">4.0</span><span class="p">,</span><span class="mf">5.0</span><span class="p">,</span><span class="mf">6.0</span><span class="p">,</span><span class="mf">7.0</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">8.0</span><span class="p">,</span><span class="mf">9.0</span><span class="p">,</span><span class="mf">10.0</span><span class="p">,</span><span class="mf">11.0</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">12.0</span><span class="p">,</span><span class="mf">13.0</span><span class="p">,</span><span class="mf">14.0</span><span class="p">,</span><span class="mf">15.0</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">]])</span>
+        <span class="n">tdata</span> <span class="o">=</span> <span class="n">shake4</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s">&#39;pga&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_almost_equal</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Passed loading shakemap with padding, no resampling...&#39;</span>
+
+        <span class="c">#make a bigger grid</span>
+        <span class="n">pga</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">36</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">pgv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">37</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">mmi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">38</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;pga&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pga</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;pgv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pgv</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;mmi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mmi</span>
+        <span class="n">geodict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">5.5</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">5.5</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;nrows&#39;</span><span class="p">:</span><span class="mi">6</span><span class="p">,</span><span class="s">&#39;ncols&#39;</span><span class="p">:</span><span class="mi">6</span><span class="p">}</span>
+        <span class="n">shake</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventDict</span><span class="p">,</span><span class="n">shakeDict</span><span class="p">,</span><span class="n">uncDict</span><span class="p">)</span>
+        <span class="n">shake</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">version</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="k">print</span> <span class="s">&#39;Testing resampling, no padding...&#39;</span>
+        <span class="n">littledict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="mf">2.0</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">4.0</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="mf">2.0</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">4.0</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">}</span>
+        <span class="n">shake5</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">samplegeodict</span><span class="o">=</span><span class="n">littledict</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">doPadding</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">10.5</span><span class="p">,</span><span class="mf">11.5</span><span class="p">,</span><span class="mf">12.5</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">16.5</span><span class="p">,</span><span class="mf">17.5</span><span class="p">,</span><span class="mf">18.5</span><span class="p">],</span>
+                           <span class="p">[</span><span class="mf">22.5</span><span class="p">,</span><span class="mf">23.5</span><span class="p">,</span><span class="mf">24.5</span><span class="p">]])</span>
+        <span class="n">tdata</span> <span class="o">=</span> <span class="n">shake5</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s">&#39;pga&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_almost_equal</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Passed resampling, no padding...&#39;</span>
+
+        <span class="k">print</span> <span class="s">&#39;Testing resampling and padding...&#39;</span>
+        <span class="n">pga</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">16</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">pgv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">mmi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">18</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">geodict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">3.5</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="mf">0.5</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">3.5</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;nrows&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="s">&#39;ncols&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">}</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;pga&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pga</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;pgv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pgv</span>
+        <span class="n">layers</span><span class="p">[</span><span class="s">&#39;mmi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mmi</span>
+        <span class="n">shake</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">eventDict</span><span class="p">,</span><span class="n">shakeDict</span><span class="p">,</span><span class="n">uncDict</span><span class="p">)</span>
+        <span class="n">shake</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">version</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">bigdict</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;xmin&#39;</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">:</span><span class="mf">4.0</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">:</span><span class="mf">4.0</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">}</span>
+        <span class="n">shake6</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">,</span><span class="n">samplegeodict</span><span class="o">=</span><span class="n">bigdict</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">doPadding</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">tdata</span> <span class="o">=</span> <span class="n">shake6</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s">&#39;pga&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">2.5</span><span class="p">,</span><span class="mf">3.5</span><span class="p">,</span><span class="mf">4.5</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">6.5</span><span class="p">,</span><span class="mf">7.5</span><span class="p">,</span><span class="mf">8.5</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="mf">10.5</span><span class="p">,</span><span class="mf">11.5</span><span class="p">,</span><span class="mf">12.5</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">],</span>
+                           <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">]])</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_almost_equal</span><span class="p">(</span><span class="n">tdata</span><span class="p">,</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Passed resampling and padding...&#39;</span>
+    <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">,</span><span class="n">error</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;Failed a shakemap load test:</span><span class="se">\n</span><span class="s"> </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">error</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s">&#39;test.xml&#39;</span><span class="p">)</span>
+    
+                 
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">shakefile</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">_read_test</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+    <span class="c"># _trim_test(shakefile)</span>
+    <span class="n">_save_test</span><span class="p">()</span>
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Mike Hearne,Bruce Worden.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.3</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
