@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>mapio.multihaz &mdash; MapIO  documentation</title>
+    <title>mapio.multihaz &mdash; MapIO 0.1 documentation</title>
     
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '',
+        VERSION:     '0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,8 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="MapIO  documentation" href="../../index.html" />
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MapIO 0.1 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" />
    
   
@@ -37,10 +38,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO  documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -71,16 +69,17 @@
 
 <div class="viewcode-block" id="MultiHazardGrid"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid">[docs]</a><span class="k">class</span> <span class="nc">MultiHazardGrid</span><span class="p">(</span><span class="n">MultiGrid</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">layers</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">origin</span><span class="p">,</span><span class="n">header</span><span class="p">,</span><span class="n">metadata</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Construct a ShakeGrid object.</span>
-<span class="sd">        :param layers:</span>
-<span class="sd">           OrderedDict containing ShakeMap data layers (keys are &#39;pga&#39;, etc., values are 2D arrays of data).</span>
-<span class="sd">        :param geodict:</span>
-<span class="sd">           Dictionary specifying the spatial extent,resolution and shape of the data.</span>
-<span class="sd">        :param origin:</span>
+        <span class="sd">&quot;&quot;&quot;Construct a MultiHazardGrid object.</span>
+<span class="sd">        </span>
+<span class="sd">        :param layers: </span>
+<span class="sd">          OrderedDict containing earthquake-induced hazard data layers (keys are &#39;pga&#39;, etc., values are 2D arrays of data).</span>
+<span class="sd">        :param geodict: </span>
+<span class="sd">          Dictionary specifying the spatial extent,resolution and shape of the data.</span>
+<span class="sd">        :param origin: </span>
 <span class="sd">          Dictionary with elements:</span>
 <span class="sd">            - id String of event ID (i.e., &#39;us2015abcd&#39;)</span>
 <span class="sd">            - source String containing originating network (&#39;us&#39;)</span>
-<span class="sd">            - time Float event magnitude</span>
+<span class="sd">            - time Python datetime of origin time, UTC.</span>
 <span class="sd">            - lat Float event latitude</span>
 <span class="sd">            - lon Float event longitude</span>
 <span class="sd">            - depth Float event depth</span>
@@ -89,7 +88,7 @@
 <span class="sd">          Dictionary with elements:</span>
 <span class="sd">            - type Type of multi-layer earthquake induced hazard (&#39;shakemap&#39;,&#39;gfe&#39;)</span>
 <span class="sd">            - version Integer product version (1)</span>
-<span class="sd">            - process_time Python datetime indicating when data was created.</span>
+<span class="sd">            - process_time Python datetime indicating when data was created (UTC)</span>
 <span class="sd">            - code_version String version of code that created this file (i.e.,&#39;4.0&#39;)</span>
 <span class="sd">            - originator String representing network that created the hazard grid.</span>
 <span class="sd">            - product_id String representing the ID of the product (may be different from origin ID)</span>
@@ -97,8 +96,7 @@
 <span class="sd">            - event_type String, one of [&#39;ACTUAL&#39;,&#39;SCENARIO&#39;]</span>
 <span class="sd">        :param metadata:</span>
 <span class="sd">          Dictionary of dictionaries containing other metadata users wish to preserve.</span>
-<span class="sd">        :returns:</span>
-<span class="sd">           A MultiHazardGrid object.</span>
+<span class="sd">        :returns: A MultiHazardGrid object.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_geodict</span> <span class="o">=</span> <span class="n">geodict</span>
@@ -111,6 +109,31 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">setOrigin</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">setMetadata</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
 
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="MultiHazardGrid.getFileGeoDict"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.getFileGeoDict">[docs]</a>    <span class="k">def</span> <span class="nf">getFileGeoDict</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the spatial extent, resolution, and shape of grid inside MultiHazardGrid format HDF file.</span>
+<span class="sd">        </span>
+<span class="sd">        :param filename:</span>
+<span class="sd">           File name of HDF file.</span>
+<span class="sd">        :returns:</span>
+<span class="sd">          GeoDict specifying spatial extent, resolution, and shape of grid inside HDF file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span>
+        <span class="n">geodict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">xvar</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">][:]</span>
+        <span class="n">yvar</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="s">&#39;y&#39;</span><span class="p">][:]</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xvar</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xvar</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">yvar</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">yvar</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;nrows&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">yvar</span><span class="p">)</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ncols&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xvar</span><span class="p">)</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;xdim&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xvar</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">xvar</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">geodict</span><span class="p">[</span><span class="s">&#39;ydim&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">yvar</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">yvar</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">geodict</span>
+        </div>
     <span class="k">def</span> <span class="nf">_saveDict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">group</span><span class="p">,</span><span class="n">mydict</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Recursively save dictionaries into groups in an HDF file.</span>
@@ -139,6 +162,7 @@
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">_loadDict</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">group</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Recursively load dictionaries from groups in an HDF file.</span>
+<span class="sd">        </span>
 <span class="sd">        :param group:</span>
 <span class="sd">          HDF5 group object.</span>
 <span class="sd">        :returns:</span>
@@ -161,6 +185,7 @@
 <span class="sd">        datasets named by layer keys.  Dictionaries contained in &quot;origin&quot;, and &quot;header&quot; will be saved in</span>
 <span class="sd">        groups of those same names.  Dictionaries contained in the &quot;metadata&quot; dictionary will be contained</span>
 <span class="sd">        in a series of recursive groups under a group called &quot;metadata&quot;.</span>
+<span class="sd">        </span>
 <span class="sd">        :param filename:</span>
 <span class="sd">          Output desired filename (HDF format).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -209,6 +234,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.load"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">filename</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load data from an HDF file into a MultiHazardGrid object.</span>
+<span class="sd">        </span>
 <span class="sd">        :param filename:</span>
 <span class="sd">          HDF file containing data and metadata for ShakeMap or Secondary Hazards data.</span>
 <span class="sd">        :returns:</span>
@@ -274,6 +300,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.setHeader"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.setHeader">[docs]</a>    <span class="k">def</span> <span class="nf">setHeader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">header</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set the header dictionary.</span>
+<span class="sd">        </span>
 <span class="sd">        :param header:</span>
 <span class="sd">          Dictionary with elements:</span>
 <span class="sd">            - type Type of multi-layer earthquake induced hazard (&#39;shakemap&#39;,&#39;gfe&#39;)</span>
@@ -290,6 +317,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.setOrigin"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.setOrigin">[docs]</a>    <span class="k">def</span> <span class="nf">setOrigin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">origin</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set the origin dictionary.</span>
+<span class="sd">        </span>
 <span class="sd">        Dictionary with elements:</span>
 <span class="sd">            - id String of event ID (i.e., &#39;us2015abcd&#39;)</span>
 <span class="sd">            - source String containing originating network (&#39;us&#39;)</span>
@@ -304,6 +332,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.setMetadata"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.setMetadata">[docs]</a>    <span class="k">def</span> <span class="nf">setMetadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">metadata</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set the metadata dictionary.</span>
+<span class="sd">        </span>
 <span class="sd">        :param metadata:</span>
 <span class="sd">          Dictionary of dictionaries of metadata.  Each dictionary can contain any of the following types:</span>
 <span class="sd">          str,unicode,int,float,long,list,tuple,np.ndarray,dict,datetime.datetime,collections.OrderedDict.</span>
@@ -313,6 +342,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.getHeader"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.getHeader">[docs]</a>    <span class="k">def</span> <span class="nf">getHeader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the header dictionary.</span>
+<span class="sd">        </span>
 <span class="sd">        :returns:</span>
 <span class="sd">          Header dictionary (see setHeader()).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -321,6 +351,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.getOrigin"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.getOrigin">[docs]</a>    <span class="k">def</span> <span class="nf">getOrigin</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the origin dictionary.</span>
+<span class="sd">        </span>
 <span class="sd">        :returns:</span>
 <span class="sd">          Origin dictionary (see setOrigin()).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -329,6 +360,7 @@
 <div class="viewcode-block" id="MultiHazardGrid.getMetadata"><a class="viewcode-back" href="../../mapio.html#mapio.multihaz.MultiHazardGrid.getMetadata">[docs]</a>    <span class="k">def</span> <span class="nf">getMetadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the dictionary of arbitrary metadata dictionaries.</span>
+<span class="sd">        </span>
 <span class="sd">        :returns:</span>
 <span class="sd">          A dictionary of dictionaries containing arbitrary metadata.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -400,7 +432,7 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2015, Mike Hearne,Bruce Worden.
+      &copy;2015, Mike Hearne.
       
       |
       Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>

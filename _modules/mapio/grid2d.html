@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>mapio.grid2d &mdash; MapIO  documentation</title>
+    <title>mapio.grid2d &mdash; MapIO 0.1 documentation</title>
     
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '',
+        VERSION:     '0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,8 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="MapIO  documentation" href="../../index.html" />
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MapIO 0.1 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" />
    
   
@@ -37,10 +38,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO  documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -69,25 +67,19 @@
 <span class="kn">from</span> <span class="nn">rasterio</span> <span class="kn">import</span> <span class="n">features</span>
 <span class="kn">from</span> <span class="nn">shapely.geometry</span> <span class="kn">import</span> <span class="n">MultiPoint</span><span class="p">,</span><span class="n">Polygon</span><span class="p">,</span><span class="n">mapping</span>
 
-<div class="viewcode-block" id="testGeoJSON"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.testGeoJSON">[docs]</a><span class="k">def</span> <span class="nf">testGeoJSON</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">testGeoJSON</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="s">&#39;has_key&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&#39;geometry&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&#39;properties&#39;</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">True</span>
     <span class="k">return</span> <span class="bp">False</span>
-</div>
+
 <div class="viewcode-block" id="Grid2D"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.Grid2D">[docs]</a><span class="k">class</span> <span class="nc">Grid2D</span><span class="p">(</span><span class="n">Grid</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A partially abstract class to represent 2D lat/lon gridded datasets. Some basic methods</span>
-<span class="sd">    are implemented here, enough so that all functions of working with data (aside from loading and saving)</span>
-<span class="sd">    can be used with this class.  Grids are assumed to be pixel-registered - that is, grid coordinates</span>
-<span class="sd">    represent the value at the *center* of the cells.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">reqfields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="s">&#39;xmin&#39;</span><span class="p">,</span><span class="s">&#39;xmax&#39;</span><span class="p">,</span><span class="s">&#39;ymin&#39;</span><span class="p">,</span><span class="s">&#39;ymax&#39;</span><span class="p">,</span><span class="s">&#39;xdim&#39;</span><span class="p">,</span><span class="s">&#39;ydim&#39;</span><span class="p">,</span><span class="s">&#39;ncols&#39;</span><span class="p">,</span><span class="s">&#39;nrows&#39;</span><span class="p">])</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">geodict</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Construct a Grid object.</span>
 <span class="sd">        </span>
 <span class="sd">        :param data: </span>
-<span class="sd">            A 2D numpy array (can be None)</span>
+<span class="sd">            A 2D numpy array (can be None).</span>
 <span class="sd">        :param geodict: </span>
 <span class="sd">            A dictionary (or None) containing the following fields:</span>
 <span class="sd">             - xmin Longitude minimum (decimal degrees) (Center of upper left cell)</span>
@@ -97,7 +89,7 @@
 <span class="sd">             - xdim Cell width (decimal degrees)</span>
 <span class="sd">             - ydim Cell height (decimal degrees)</span>
 <span class="sd">             - nrows Number of rows of input data (must match input data dimensions)</span>
-<span class="sd">             - ncols Number of columns of input data (must match input data dimensions)</span>
+<span class="sd">             - ncols Number of columns of input data (must match input data dimensions).</span>
 <span class="sd">        :returns:</span>
 <span class="sd">            A Grid object.  Internal representation of geodict input will have nrows/ncols fields added.</span>
 <span class="sd">        :raises DataSetException:</span>
@@ -149,7 +141,7 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">_createSampleData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">M</span><span class="p">,</span><span class="n">N</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Used for internal testing - create an NxN grid with lower left corner at 0.5,0.5, xdim/ydim = 1.0</span>
+        <span class="sd">&quot;&quot;&quot;Used for internal testing - create an NxN grid with lower left corner at 0.5,0.5, xdim/ydim = 1.0.</span>
 <span class="sd">        :param M:</span>
 <span class="sd">           Number of rows in output grid</span>
 <span class="sd">        :param N:</span>
@@ -174,29 +166,37 @@
     
     <span class="c">#This should be a @classmethod in subclasses</span>
     <span class="nd">@abc.abstractmethod</span>
-<div class="viewcode-block" id="Grid2D.load"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.Grid2D.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="n">bounds</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="n">bounds</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">resample</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span><span class="n">padValue</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Load method not implemented in base class&#39;</span><span class="p">)</span>
-</div>
+
     <span class="nd">@classmethod</span>
 <div class="viewcode-block" id="Grid2D.copyFromGrid"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.Grid2D.copyFromGrid">[docs]</a>    <span class="k">def</span> <span class="nf">copyFromGrid</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">grid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Copy constructor - can be used to create an instance of any Grid2D subclass from another.</span>
+
+<span class="sd">        :param grid:</span>
+<span class="sd">          Any Grid2D instance.</span>
+<span class="sd">        :returns:</span>
+<span class="sd">          A copy of the data in that input Grid2D instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span><span class="n">Grid2D</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;Input to copyFromGrid must be an instance of a Grid2D object (inc. subclasses)&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span><span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">())</span>
 
     <span class="c">#This should be a @classmethod in subclasses</span></div>
     <span class="nd">@abc.abstractmethod</span>
-<div class="viewcode-block" id="Grid2D.save"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.Grid2D.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">filename</span><span class="p">):</span> <span class="c">#would we ever want to save a subset of the data?</span>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">filename</span><span class="p">):</span> <span class="c">#would we ever want to save a subset of the data?</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Save method not implemented in base class&#39;</span><span class="p">)</span>
-    </div>
+    
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">_createSections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">bounds</span><span class="p">,</span><span class="n">geodict</span><span class="p">,</span><span class="n">firstColumnDuplicated</span><span class="p">,</span><span class="n">isScanLine</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Given a grid that goes from -180 to 180 degrees, figure out the two pixel regions that up both sides of the subset</span>
+        <span class="sd">&quot;&quot;&quot;Given a grid that goes from -180 to 180 degrees, figure out the two pixel regions that up both sides of the subset.</span>
 <span class="sd">        :param bounds:</span>
 <span class="sd">           Tuple of (xmin,xmax,ymin,ymax)</span>
 <span class="sd">        :param geodict:</span>
 <span class="sd">           Geodict dictionary</span>
 <span class="sd">        :param firstColumnDuplicated:</span>
-<span class="sd">          Boolean indicating whether this is a global data set where the first and last columns are identical</span>
+<span class="sd">          Boolean indicating whether this is a global data set where the first and last columns are identical.</span>
 <span class="sd">        :param isScanLine:</span>
 <span class="sd">          Boolean indicating whether this array is in scan line order (pixel[0,0] is the geographic upper left).</span>
 <span class="sd">        :returns:</span>
@@ -235,16 +235,16 @@
         <span class="k">return</span><span class="p">(</span><span class="n">region1</span><span class="p">,</span><span class="n">region2</span><span class="p">)</span>
     
 <div class="viewcode-block" id="Grid2D.getData"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.Grid2D.getData">[docs]</a>    <span class="k">def</span> <span class="nf">getData</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return a reference to the data inside the Grid</span>
-<span class="sd">        :returns:</span>
+        <span class="sd">&quot;&quot;&quot;Return a reference to the data inside the Grid.</span>
+<span class="sd">        </span>
+<span class="sd">        :returns: </span>
 <span class="sd">          A reference to a 2D numpy array.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="c">#should we return a copy of the data?</span>
 </div>
 <div class="viewcode-block" id="Grid2D.getGeoDict"><a class="viewcode-back" href="../../mapio.html#mapio.grid2d.Grid2D.getGeoDict">[docs]</a>    <span class="k">def</span> <span class="nf">getGeoDict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return a reference to the geodict inside the Grid</span>
+<span class="sd">        Return a reference to the geodict inside the Grid.</span>
 <span class="sd">        :returns:</span>
 <span class="sd">          A reference to a dictionary (see constructor).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -708,6 +708,26 @@
         <span class="k">for</span> <span class="n">shpfile</span> <span class="ow">in</span> <span class="n">shpfiles</span><span class="p">:</span>
             <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">shpfile</span><span class="p">)</span>
 
+<span class="k">def</span> <span class="nf">_test_fixgeodict</span><span class="p">():</span>
+    <span class="n">subbounds</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">118.7834</span><span class="p">,</span><span class="o">-</span><span class="mf">117.0123</span><span class="p">,</span><span class="mf">32.8754</span><span class="p">,</span><span class="mf">33.7896</span><span class="p">)</span>
+    <span class="n">xdim</span><span class="p">,</span><span class="n">ydim</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.02</span><span class="p">,</span><span class="mf">0.02</span><span class="p">)</span>
+    <span class="n">nrows</span> <span class="o">=</span> <span class="n">ncols</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">subgeodict</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="o">.</span><span class="n">fixGeoDict</span><span class="p">(</span><span class="n">subbounds</span><span class="p">,</span><span class="n">xdim</span><span class="p">,</span><span class="n">ydim</span><span class="p">,</span><span class="n">nrows</span><span class="p">,</span><span class="n">ncols</span><span class="p">,</span><span class="n">preserve</span><span class="o">=</span><span class="s">&#39;dims&#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&#39;After initial fix, nrows = </span><span class="si">%i</span><span class="s">, ncols = </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;nrows&#39;</span><span class="p">],</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;ncols&#39;</span><span class="p">])</span>
+
+    <span class="n">newbounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">],</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">],</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">],</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">])</span>
+    <span class="n">xdim</span><span class="p">,</span><span class="n">ydim</span> <span class="o">=</span> <span class="p">(</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;xdim&#39;</span><span class="p">],</span><span class="n">subgeodict</span><span class="p">[</span><span class="s">&#39;ydim&#39;</span><span class="p">])</span>
+    <span class="n">nrows</span><span class="p">,</span><span class="n">ncols</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">newdict</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="o">.</span><span class="n">fixGeoDict</span><span class="p">(</span><span class="n">newbounds</span><span class="p">,</span><span class="n">xdim</span><span class="p">,</span><span class="n">ydim</span><span class="p">,</span><span class="n">nrows</span><span class="p">,</span><span class="n">ncols</span><span class="p">,</span><span class="n">preserve</span><span class="o">=</span><span class="s">&#39;dims&#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&#39;After second fix, nrows = </span><span class="si">%i</span><span class="s">, ncols = </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;nrows&#39;</span><span class="p">],</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;ncols&#39;</span><span class="p">])</span>
+
+    <span class="n">newbounds</span> <span class="o">=</span> <span class="p">(</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">],</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">],</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">],</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">])</span>
+    <span class="n">xdim</span><span class="p">,</span><span class="n">ydim</span> <span class="o">=</span> <span class="p">(</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;xdim&#39;</span><span class="p">],</span><span class="n">newdict</span><span class="p">[</span><span class="s">&#39;ydim&#39;</span><span class="p">])</span>
+    <span class="n">nrows</span><span class="p">,</span><span class="n">ncols</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">newdict2</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="o">.</span><span class="n">fixGeoDict</span><span class="p">(</span><span class="n">newbounds</span><span class="p">,</span><span class="n">xdim</span><span class="p">,</span><span class="n">ydim</span><span class="p">,</span><span class="n">nrows</span><span class="p">,</span><span class="n">ncols</span><span class="p">,</span><span class="n">preserve</span><span class="o">=</span><span class="s">&#39;dims&#39;</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&#39;After third fix, nrows = </span><span class="si">%i</span><span class="s">, ncols = </span><span class="si">%i</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">newdict2</span><span class="p">[</span><span class="s">&#39;nrows&#39;</span><span class="p">],</span><span class="n">newdict2</span><span class="p">[</span><span class="s">&#39;ncols&#39;</span><span class="p">])</span>
+    
+    <span class="k">assert</span> <span class="n">subgeodict</span> <span class="o">==</span> <span class="n">newdict</span>
 
 <span class="k">def</span> <span class="nf">_test_copy</span><span class="p">():</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">16</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
@@ -719,6 +739,7 @@
     <span class="k">print</span> <span class="n">grid2</span><span class="o">.</span><span class="n">_geodict</span>    
     
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">_test_fixgeodict</span><span class="p">()</span>
     <span class="n">_test_interpolate</span><span class="p">()</span>
     <span class="n">_test_rasterize</span><span class="p">()</span>
     <span class="n">_test_basics</span><span class="p">()</span>
@@ -750,7 +771,7 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2015, Mike Hearne,Bruce Worden.
+      &copy;2015, Mike Hearne.
       
       |
       Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>

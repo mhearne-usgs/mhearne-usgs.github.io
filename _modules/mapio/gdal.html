@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>mapio.gdal &mdash; MapIO  documentation</title>
+    <title>mapio.gdal &mdash; MapIO 0.1 documentation</title>
     
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
-        VERSION:     '',
+        VERSION:     '0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,8 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="MapIO  documentation" href="../../index.html" />
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="MapIO 0.1 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" />
    
   
@@ -37,10 +38,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="../../py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO  documentation</a> &raquo;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">MapIO 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -127,6 +125,7 @@
 <span class="sd">          Geodict defining a spatial extent that we want to envelope the returned geodict.</span>
 <span class="sd">        :returns:</span>
 <span class="sd">          A geodict that is guaranteed to be contained by input geodict.</span>
+<span class="sd">          </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">fgeodict</span><span class="p">,</span><span class="n">xvar</span><span class="p">,</span><span class="n">yvar</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">fxmin</span><span class="p">,</span><span class="n">fxmax</span><span class="p">,</span><span class="n">fymin</span><span class="p">,</span><span class="n">fymax</span> <span class="o">=</span> <span class="p">(</span><span class="n">fgeodict</span><span class="p">[</span><span class="s">&#39;xmin&#39;</span><span class="p">],</span><span class="n">fgeodict</span><span class="p">[</span><span class="s">&#39;xmax&#39;</span><span class="p">],</span><span class="n">fgeodict</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">],</span><span class="n">fgeodict</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">])</span>
@@ -233,6 +232,18 @@
 
     <span class="nd">@classmethod</span>
 <div class="viewcode-block" id="GDALGrid.readGDAL"><a class="viewcode-back" href="../../mapio.html#mapio.gdal.GDALGrid.readGDAL">[docs]</a>    <span class="k">def</span> <span class="nf">readGDAL</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="n">filename</span><span class="p">,</span><span class="n">bounds</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">firstColumnDuplicated</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read an ESRI flt/bip/bil/bsq formatted file using rasterIO (GDAL Python wrapper).</span>
+<span class="sd">        :param filename:</span>
+<span class="sd">          Input ESRI formatted grid file.</span>
+<span class="sd">        :param bounds:</span>
+<span class="sd">          Tuple of (xmin,xmax,ymin,ymax)</span>
+<span class="sd">        :param firstColumnDuplicated:</span>
+<span class="sd">          Indicate whether the last column is the same as the first column.</span>
+<span class="sd">        :returns:</span>
+<span class="sd">          A tuple of (data,geodict) where data is a 2D numpy array of all data found inside bounds, and </span>
+<span class="sd">          geodict gives the geo-referencing information for the data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">geodict</span><span class="p">,</span><span class="n">xvar</span><span class="p">,</span><span class="n">yvar</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">data</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="k">with</span> <span class="n">rasterio</span><span class="o">.</span><span class="n">drivers</span><span class="p">():</span>
@@ -317,8 +328,19 @@
         <span class="k">return</span> <span class="n">hdr2</span>
     
 <div class="viewcode-block" id="GDALGrid.save"><a class="viewcode-back" href="../../mapio.html#mapio.gdal.GDALGrid.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">filename</span><span class="p">,</span><span class="n">format</span><span class="o">=</span><span class="s">&#39;EHdr&#39;</span><span class="p">):</span>
-        <span class="c">#http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=BIL,_BIP,_and_BSQ_raster_files</span>
-        <span class="c">#http://resources.esri.com/help/9.3/arcgisdesktop/com/gp_toolref/conversion_tools/float_to_raster_conversion_.htm</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the data contained in this grid to a float or integer ESRI grid file.  Described here:</span>
+<span class="sd">        http://webhelp.esri.com/arcgisdesktop/9.3/index.cfm?TopicName=BIL,_BIP,_and_BSQ_raster_files</span>
+<span class="sd">        http://resources.esri.com/help/9.3/arcgisdesktop/com/gp_toolref/conversion_tools/float_to_raster_conversion_.htm.</span>
+
+<span class="sd">        :param filename:</span>
+<span class="sd">          String representing file to which data should be saved.</span>
+<span class="sd">        :param format:</span>
+<span class="sd">          Currently this code only supports the GDAL format &#39;EHdr&#39; (see formats above.)  As rasterIO write support is expanded, this code should add functionality accordingly.</span>
+<span class="sd">        :raises DataSetException:</span>
+<span class="sd">          When format is not &#39;EHdr&#39;.        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
         <span class="n">supported</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;EHdr&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">format</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">supported</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataSetException</span><span class="p">(</span><span class="s">&#39;Only &quot;</span><span class="si">%s</span><span class="s">&quot; file formats supported for saving&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">supported</span><span class="p">))</span>
@@ -470,7 +492,7 @@
         <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">geodict</span><span class="p">)</span>
 
 </div></div>
-<div class="viewcode-block" id="createSample"><a class="viewcode-back" href="../../mapio.html#mapio.gdal.createSample">[docs]</a><span class="k">def</span> <span class="nf">createSample</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">N</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">createSample</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">N</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">M</span><span class="o">*</span><span class="n">N</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">M</span><span class="p">,</span><span class="n">N</span><span class="p">)</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span> <span class="c">#arange gives int64 by default, not supported by netcdf3</span>
     <span class="n">xvar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="o">+</span><span class="n">N</span><span class="p">,</span><span class="mf">1.0</span><span class="p">)</span>
@@ -485,7 +507,7 @@
                <span class="s">&#39;ydim&#39;</span><span class="p">:</span><span class="mf">1.0</span><span class="p">}</span>
     <span class="n">gmtgrid</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">geodict</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">gmtgrid</span>
-</div>
+
 <span class="k">def</span> <span class="nf">_format_test</span><span class="p">():</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]:</span>
@@ -682,7 +704,7 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2015, Mike Hearne,Bruce Worden.
+      &copy;2015, Mike Hearne.
       
       |
       Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
